@@ -1,11 +1,8 @@
-import React from "react";
+import { useState } from "react";
 import {
-  FolderRegular,
   EditRegular,
   OpenRegular,
-  DocumentRegular,
-  DocumentPdfRegular,
-  VideoRegular,
+  VideoPersonRegular,
   DeleteRegular,
 } from "@fluentui/react-icons";
 import {
@@ -16,74 +13,84 @@ import {
   DataGridHeader,
   DataGridHeaderCell,
   DataGridCell,
+  Link,
   TableCellLayout,
   createTableColumn,
   Button,
+  Dialog,
+  DialogTrigger,
+  DialogSurface,
+  DialogBody,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@fluentui/react-components";
-import { PrimaryButton } from "@fluentui/react/lib/Button";
-
-const items = [
-  {
-    file: { label: "Meeting notes", icon: <DocumentRegular /> },
-    author: { label: "Max Mustermann", status: "available" },
-    lastUpdated: { label: "7h ago", timestamp: 1 },
-  },
-  {
-    file: { label: "Thursday presentation", icon: <FolderRegular /> },
-    author: { label: "Erika Mustermann", status: "busy" },
-    lastUpdated: { label: "Yesterday at 1:45 PM", timestamp: 2 },
-  },
-  {
-    file: { label: "Training recording", icon: <VideoRegular /> },
-    author: { label: "John Doe", status: "away" },
-    lastUpdated: { label: "Yesterday at 1:45 PM", timestamp: 2 },
-  },
-  {
-    file: { label: "Purchase order", icon: <DocumentPdfRegular /> },
-    author: { label: "Jane Doe", status: "offline" },
-    lastUpdated: { label: "Tue at 9:30 AM", timestamp: 3 },
-  },
-];
+import { UpdatePersonForm } from "./Components";
+import update from "immutability-helper";
 
 const columns = [
   createTableColumn({
-    columnId: "file",
+    columnId: "job",
     compare: (a, b) => {
-      return a.file.label.localeCompare(b.file.label);
+      return a.job.label.localeCompare(b.job.label);
     },
     renderHeaderCell: () => {
-      return "File";
+      return "Designation";
     },
     renderCell: (item) => {
       return (
-        <TableCellLayout media={item.file.icon}>
-          {item.file.label}
+        <TableCellLayout media={item.job.icon}>
+          {item.job.label}
         </TableCellLayout>
       );
     },
   }),
   createTableColumn({
-    columnId: "author",
+    columnId: "name",
     compare: (a, b) => {
-      return a.author.label.localeCompare(b.author.label);
+      return a.name.label.localeCompare(b.name.label);
     },
     renderHeaderCell: () => {
-      return "Author";
+      return "Name";
     },
     renderCell: (item) => {
       return (
         <TableCellLayout
           media={
             <Avatar
-              aria-label={item.author.label}
-              name={item.author.label}
-              badge={{ status: item.author.status }}
+              aria-label={item.name.label}
+              name={item.name.label}
+              badge={{ status: item.name.status }}
             />
           }
         >
-          {item.author.label}
+          {item.name.label}
         </TableCellLayout>
       );
+    },
+  }),
+  createTableColumn({
+    columnId: "age",
+    compare: (a, b) => {
+      return a.age.label.localeCompare(b.age.label);
+    },
+    renderHeaderCell: () => {
+      return "Age";
+    },
+    renderCell: (item) => {
+      return <TableCellLayout>{item.age.label}</TableCellLayout>;
+    },
+  }),
+  createTableColumn({
+    columnId: "currentExp",
+    compare: (a, b) => {
+      return a.currentExp.label.localeCompare(b.currentExp.label);
+    },
+    renderHeaderCell: () => {
+      return "Experience";
+    },
+    renderCell: (item) => {
+      return <TableCellLayout>{item.currentExp.label}</TableCellLayout>;
     },
   }),
   createTableColumn({
@@ -92,7 +99,13 @@ const columns = [
       return "Single action";
     },
     renderCell: () => {
-      return <Button icon={<OpenRegular />}>Open</Button>;
+      return (
+        <Button icon={<OpenRegular />}>
+          <Link href="https://www.google.com/" target="_blank">
+            Open
+          </Link>
+        </Button>
+      );
     },
   }),
   createTableColumn({
@@ -100,11 +113,39 @@ const columns = [
     renderHeaderCell: () => {
       return "Actions";
     },
-    renderCell: () => {
+    renderCell: (item, onEditClick, onDeleteClick, onAddPerson) => {
       return (
         <>
-          <Button aria-label="Edit" icon={<EditRegular />} />
-          <Button aria-label="Delete" icon={<DeleteRegular />} />
+          <Dialog>
+            <DialogTrigger disableButtonEnhancement>
+              <Button
+                aria-label="Edit"
+                icon={<EditRegular />}
+                onClick={(e) => onEditClick(e, item)}
+              />
+            </DialogTrigger>
+            <DialogSurface>
+              <DialogBody>
+                <DialogTitle>Edit data.</DialogTitle>
+                <DialogContent>
+                  Update the fields of the following values as per your
+                  requirement.
+                  <UpdatePersonForm item={item} onAddPerson={onAddPerson} />
+                </DialogContent>
+                <DialogActions>
+                  <DialogTrigger disableButtonEnhancement>
+                    <Button appearance="secondary">Close</Button>
+                  </DialogTrigger>
+                </DialogActions>
+              </DialogBody>
+            </DialogSurface>
+          </Dialog>
+
+          <Button
+            aria-label="Delete"
+            icon={<DeleteRegular />}
+            onClick={(e) => onDeleteClick(e, item)}
+          />
         </>
       );
     },
@@ -122,39 +163,74 @@ const getCellFocusMode = (columnId) => {
   }
 };
 
-const Example = () => {
+const Example = ({ items, setItems }) => {
+  const handleEdit = (e, item) => {
+    e.stopPropagation();
+  };
+
+  const handleDelete = (e, item) => {
+    e.stopPropagation();
+    const updatedItems = items?.filter((element) => item !== element);
+    setItems(updatedItems);
+    localStorage.setItem("ITEM_DATA", JSON.stringify(updatedItems));
+  };
+
+  const handleAddPerson = (newPerson) => {
+    const indexOfItemToUpdate = items.findIndex(
+      (item) => item.job.label === newPerson.job.label
+    );
+
+    if (indexOfItemToUpdate !== -1) {
+      const updatedItems = items.map((item, index) =>
+        index === indexOfItemToUpdate ? { ...item, ...newPerson } : item
+      );
+
+      setItems(updatedItems);
+      localStorage.setItem("ITEM_DATA", JSON.stringify(updatedItems));
+    } else {
+      const updatedItems = update(items, {
+        $push: [newPerson],
+      });
+
+      setItems(updatedItems);
+      localStorage.setItem("ITEM_DATA", JSON.stringify(updatedItems));
+    }
+  };
+
   return (
-    <DataGrid
-      items={items}
-      columns={columns}
-      sortable={true}
-      selectionMode="multiselect"
-      getRowId={(item) => item.file.label}
-      onSelectionChange={(e, data) => console.log(data)}
-    >
-      <DataGridHeader>
-        <DataGridRow selectionCell={{ "aria-label": "Select all rows" }}>
-          {({ renderHeaderCell }) => (
-            <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
-          )}
-        </DataGridRow>
-      </DataGridHeader>
-      <DataGridBody>
-        {({ item, rowId }) => (
-          <DataGridRow
-            key={rowId}
-            selectionCell={{ "aria-label": "Select row" }}
-          >
-            {({ renderCell, columnId }) => (
-              <DataGridCell focusMode={getCellFocusMode(columnId)}>
-                {renderCell(item)}
-              </DataGridCell>
+    <>
+      <DataGrid
+        items={items}
+        columns={columns}
+        sortable={true}
+        selectionMode="single"
+        getRowId={(item) => item.job.label}
+        onSelectionChange={(e, data) => console.log(data)}
+        style={{ minWidth: "75rem" }}
+      >
+        <DataGridHeader>
+         { <DataGridRow selectionCell={{ "aria-label": "Select all rows" }}>
+            {({ renderHeaderCell }) => (
+              <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
             )}
-          </DataGridRow>
-        )}
-      </DataGridBody>
-      <PrimaryButton>Click me</PrimaryButton>
-    </DataGrid>
+          </DataGridRow>}
+        </DataGridHeader>
+        <DataGridBody>
+          {({ item, rowId }) => (
+            <DataGridRow
+              key={rowId}
+              selectionCell={{ "aria-label": "Select row" }}
+            >
+              {({ renderCell, columnId }) => (
+                <DataGridCell focusMode={getCellFocusMode(columnId)}>
+                  {renderCell(item, handleEdit, handleDelete, handleAddPerson)}
+                </DataGridCell>
+              )}
+            </DataGridRow>
+          )}
+        </DataGridBody>
+      </DataGrid>
+    </>
   );
 };
 
